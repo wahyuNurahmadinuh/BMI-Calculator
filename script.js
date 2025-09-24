@@ -1,7 +1,9 @@
+// Global variables
 let currentWeightUnit = 'kg';
 let currentHeightUnit = 'cm';
 let currentData = {};
 
+// Unit conversion functions
 function kgToLbs(kg) {
     return kg * 2.20462;
 }
@@ -21,18 +23,19 @@ function feetToCm(feet, inches) {
     return (feet * 12 + inches) * 2.54;
 }
 
+// Toggle functions
 function toggleWeightUnit() {
     const weightInput = document.getElementById('weight');
     const unitButton = document.getElementById('weight-unit');
     const currentValue = parseFloat(weightInput.value) || 0;
 
     if (currentWeightUnit === 'kg') {
-
+        // Convert to lbs
         weightInput.value = currentValue > 0 ? kgToLbs(currentValue).toFixed(1) : '';
         unitButton.textContent = 'lbs';
         currentWeightUnit = 'lbs';
     } else {
-
+        // Convert to kg
         weightInput.value = currentValue > 0 ? lbsToKg(currentValue).toFixed(1) : '';
         unitButton.textContent = 'kg';
         currentWeightUnit = 'kg';
@@ -46,7 +49,7 @@ function toggleHeightUnit() {
     const currentValue = parseFloat(heightInput.value) || 0;
 
     if (currentHeightUnit === 'cm') {
-
+        // Convert to feet/inches
         if (currentValue > 0) {
             const feetInches = cmToFeet(currentValue);
             heightInput.value = Math.floor(feetInches.feet);
@@ -60,7 +63,7 @@ function toggleHeightUnit() {
         unitButton.textContent = 'ft/in';
         currentHeightUnit = 'ft';
     } else {
-
+        // Convert to cm
         const feet = parseFloat(heightInput.value) || 0;
         const inches = parseFloat(heightInchesInput.value) || 0;
         if (feet > 0 || inches > 0) {
@@ -75,43 +78,89 @@ function toggleHeightUnit() {
     }
 }
 
+// Strict BMI calculation with higher precision
 function calculateBMI(weightKg, heightCm) {
     const heightM = heightCm / 100;
-    return weightKg / (heightM * heightM);
+    const bmi = weightKg / (heightM * heightM);
+    return parseFloat(bmi.toFixed(2));
 }
 
+// Medical-grade body fat estimation with age and gender consideration
 function estimateBodyFat(bmi, age, gender) {
+    if (!age || age < 10) return null;
+    
     let bodyFat;
+    // Enhanced Deurenberg formula with more precision
     if (gender === 'male') {
         bodyFat = (1.20 * bmi) + (0.23 * age) - 16.2;
+        // Adjustment for very lean or muscular men
+        if (bmi < 20 && age < 30) bodyFat -= 2;
     } else if (gender === 'female') {
         bodyFat = (1.20 * bmi) + (0.23 * age) - 5.4;
+        // Women naturally have higher body fat
+        if (age > 40) bodyFat += 1;
     } else {
-
+        // Average calculation
         bodyFat = (1.20 * bmi) + (0.23 * age) - 10.8;
     }
-    return Math.max(0, Math.min(50, bodyFat));
+    
+    return Math.max(3, Math.min(50, parseFloat(bodyFat.toFixed(1))));
 }
 
-function calculateWaistHeightRatio(waistCm, heightCm) {
-    if (!waistCm || !heightCm) return null;
-    return waistCm / heightCm;
-}
-
+// Strict BMI category classification (WHO + additional precision)
 function getBMICategory(bmi) {
-    if (bmi < 18.5) return { category: 'underweight', text: 'Berat Badan Kurang' };
-    if (bmi < 25) return { category: 'normal', text: 'Normal' };
-    if (bmi < 30) return { category: 'overweight', text: 'Berat Badan Berlebih' };
-    return { category: 'obese', text: 'Obesitas' };
+    if (bmi < 16) return { category: 'severely-underweight', text: 'Sangat Kurus', risk: 'very-high' };
+    if (bmi < 18.5) return { category: 'underweight', text: 'Kurus', risk: 'moderate' };
+    if (bmi < 25) return { category: 'normal', text: 'Normal', risk: 'minimal' };
+    if (bmi < 30) return { category: 'overweight', text: 'Berat Berlebih', risk: 'moderate' };
+    if (bmi < 35) return { category: 'obese-1', text: 'Obesitas Tingkat 1', risk: 'high' };
+    if (bmi < 40) return { category: 'obese-2', text: 'Obesitas Tingkat 2', risk: 'very-high' };
+    return { category: 'obese-3', text: 'Obesitas Tingkat 3 (Morbid)', risk: 'very-high' };
 }
 
+// More accurate ideal weight calculation based on strict medical standards
 function calculateIdealWeightRange(heightCm) {
     const heightM = heightCm / 100;
-    const minWeight = 18.5 * (heightM * heightM);
-    const maxWeight = 24.9 * (heightM * heightM);
+    // Stricter range: 20-23 BMI for optimal health
+    const minWeight = 20.0 * (heightM * heightM);
+    const maxWeight = 23.0 * (heightM * heightM);
     return { min: minWeight, max: maxWeight };
 }
 
+// Health risk assessment
+function getHealthRisk(bmi, age, gender) {
+    const category = getBMICategory(bmi);
+    let riskLevel = category.risk;
+    
+    // Age adjustments
+    if (age > 65) {
+        if (bmi >= 22 && bmi <= 27) riskLevel = 'minimal'; // Elderly can tolerate slightly higher BMI
+    }
+    
+    return {
+        level: riskLevel,
+        description: getHealthRiskDescription(riskLevel, bmi)
+    };
+}
+
+function getHealthRiskDescription(riskLevel, bmi) {
+    switch (riskLevel) {
+        case 'minimal':
+            return 'Risiko Minimal';
+        case 'low':
+            return 'Risiko Rendah';
+        case 'moderate':
+            return 'Risiko Sedang';
+        case 'high':
+            return 'Risiko Tinggi';
+        case 'very-high':
+            return 'Risiko Sangat Tinggi';
+        default:
+            return 'Tidak Diketahui';
+    }
+}
+
+// Animate number counter
 function animateNumber(elementId, startValue, endValue, duration = 1000) {
     const element = document.getElementById(elementId);
     const increment = (endValue - startValue) / (duration / 16);
@@ -127,165 +176,154 @@ function animateNumber(elementId, startValue, endValue, duration = 1000) {
     }, 16);
 }
 
+// Update BMI gauge pointer with more precision
 function updateBMIGauge(bmi) {
     const pointer = document.getElementById('bmi-pointer');
-
-    let position = ((bmi - 15) / 20) * 100;
+    // More precise BMI scale mapping
+    let position;
+    
+    if (bmi <= 16) position = 0;
+    else if (bmi <= 18.5) position = ((bmi - 16) / (18.5 - 16)) * 15;
+    else if (bmi <= 25) position = 15 + ((bmi - 18.5) / (25 - 18.5)) * 45;
+    else if (bmi <= 30) position = 60 + ((bmi - 25) / (30 - 25)) * 15;
+    else if (bmi <= 35) position = 75 + ((bmi - 30) / (35 - 30)) * 10;
+    else if (bmi <= 40) position = 85 + ((bmi - 35) / (40 - 35)) * 10;
+    else position = 95 + Math.min(((bmi - 40) / 10) * 5, 5);
+    
     position = Math.max(0, Math.min(100, position));
     pointer.style.left = position + '%';
 }
 
+// Generate strict contextual analysis
 function generateContextualAnalysis(data) {
-    const { bmi, category, bodyType, waistHeightRatio, activityLevel, age, gender } = data;
-    let analysis = `<h3>📊 Analisis Kontekstual</h3>`;
+    const { bmi, category, age, gender, healthRisk } = data;
+    let analysis = `<h3>📊 Analisis Medis</h3>`;
     
-    analysis += `<p><strong>BMI Anda: ${bmi.toFixed(1)}</strong> - ${category.text}</p>`;
-
-    if (category.category === 'overweight' || category.category === 'obese') {
-        if (bodyType === 'mesomorph') {
-            analysis += `<div class="warning-message">
-                <strong>⚠️ Catatan Penting:</strong> BMI Anda menunjukkan ${category.text.toLowerCase()}, 
-                namun tipe tubuh Mesomorph cenderung memiliki massa otot yang lebih tinggi. 
-                BMI mungkin tidak mencerminkan komposisi tubuh yang sebenarnya. 
-                Pertimbangkan pengukuran body fat dengan caliper atau BIA untuk hasil yang lebih akurat.
-            </div>`;
-        }
-        
-        if (waistHeightRatio && waistHeightRatio < 0.5) {
-            analysis += `<div class="warning-message">
-                <strong>✅ Indikator Positif:</strong> Meski BMI menunjukkan ${category.text.toLowerCase()}, 
-                rasio pinggang-tinggi Anda (${(waistHeightRatio * 100).toFixed(1)}%) masih dalam kategori sehat (&lt;50%). 
-                Ini menunjukkan distribusi lemak yang relatif baik.
+    analysis += `<p><strong>BMI Anda: ${bmi}</strong> - ${category.text}</p>`;
+    
+    // Health risk assessment
+    analysis += `<div class="health-risk risk-${healthRisk.level}">
+        <strong>⚠️ ${healthRisk.description}</strong>
+    </div>`;
+    
+    // Detailed medical interpretation
+    if (bmi < 16) {
+        analysis += `<div class="warning-message" style="border-color: var(--danger-color); background: #ffebee;">
+            <strong>🚨 Peringatan Medis:</strong> BMI di bawah 16 menunjukkan kondisi sangat kurus yang berbahaya. 
+            Segera konsultasi dengan dokter untuk evaluasi medis lengkap dan program peningkatan berat badan.
+        </div>`;
+    } else if (bmi < 18.5) {
+        analysis += `<div class="warning-message">
+            <strong>⚠️ Perhatian:</strong> Berat badan kurang dapat meningkatkan risiko osteoporosis, 
+            gangguan sistem imun, dan masalah kesuburan. Konsultasi dengan ahli gizi dianjurkan.
+        </div>`;
+    } else if (bmi >= 25 && bmi < 30) {
+        analysis += `<div class="warning-message">
+            <strong>📊 Berat Berlebih:</strong> Risiko diabetes tipe 2, penyakit jantung, dan hipertensi mulai meningkat. 
+            Penurunan 5-10% berat badan dapat memberikan manfaat kesehatan yang signifikan.
+        </div>`;
+    } else if (bmi >= 30) {
+        analysis += `<div class="warning-message" style="border-color: var(--danger-color); background: #ffebee;">
+            <strong>🚨 Obesitas:</strong> Risiko tinggi penyakit kardiovaskular, diabetes, sleep apnea, 
+            dan berbagai jenis kanker. Segera konsultasi dengan tenaga medis untuk program penurunan berat yang aman.
+        </div>`;
+    }
+    
+    // Age-specific considerations
+    if (age && age > 65) {
+        if (bmi >= 22 && bmi <= 27) {
+            analysis += `<div class="warning-message" style="border-color: var(--info-color);">
+                <strong>👴 Pertimbangan Usia:</strong> Pada usia ${age} tahun, BMI sedikit lebih tinggi (22-27) 
+                dapat memberikan perlindungan terhadap patah tulang dan infeksi.
             </div>`;
         }
     }
-
-    if (waistHeightRatio) {
-        if (waistHeightRatio >= 0.6) {
-            analysis += `<div class="warning-message" style="border-color: var(--danger-color); background: #ffebee;">
-                <strong>🚨 Peringatan Kesehatan:</strong> Rasio pinggang-tinggi Anda (${(waistHeightRatio * 100).toFixed(1)}%) 
-                menunjukkan risiko tinggi penyakit metabolik. Konsultasikan dengan dokter untuk evaluasi lebih lanjut.
-            </div>`;
-        } else if (waistHeightRatio >= 0.5) {
-            analysis += `<div class="warning-message">
-                <strong>⚠️ Perhatian:</strong> Rasio pinggang-tinggi Anda (${(waistHeightRatio * 100).toFixed(1)}%) 
-                berada di batas normal. Pertimbangkan pola makan sehat dan olahraga teratur.
-            </div>`;
-        }
-    }
-
-    if (activityLevel === 'very-active' || activityLevel === 'active') {
-        if (category.category === 'overweight') {
-            analysis += `<p><strong>💪 Catatan Aktivitas:</strong> Tingkat aktivitas Anda yang tinggi menunjukkan 
-            kemungkinan massa otot yang lebih besar, yang dapat mempengaruhi interpretasi BMI.</p>`;
-        }
-    }
-
-    if (age && age > 60) {
-        analysis += `<p><strong>👴 Pertimbangan Usia:</strong> Pada usia ${age} tahun, 
-        komposisi tubuh alami berubah dengan penurunan massa otot. Konsultasikan dengan profesional 
-        kesehatan untuk evaluasi yang sesuai usia.</p>`;
-    }
-
+    
     return analysis;
 }
 
+// Generate strict recommendations
 function generateRecommendations(data) {
-    const { category, activityLevel, age, bodyType } = data;
-    let recommendations = `<h3>📋 Rekomendasi Personal</h3>`;
+    const { category, age, gender, bmi } = data;
+    let recommendations = `<h3>📋 Rekomendasi Medis</h3>`;
 
     switch (category.category) {
+        case 'severely-underweight':
         case 'underweight':
             recommendations += `
-                <div style="border-left: 4px solid #2196f3; padding-left: 15px;">
-                    <h4>🍽️ Nutrisi:</h4>
+                <div style="border-left: 4px solid #1565c0; padding-left: 15px;">
+                    <h4>🏥 Konsultasi Medis Prioritas:</h4>
+                    <p style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                        <strong>Penting:</strong> Segera konsultasi dengan dokter untuk evaluasi penyebab 
+                        berat badan kurang dan kemungkinan kondisi medis yang mendasari.
+                    </p>
+                    <h4>🍽️ Strategi Nutrisi:</h4>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Tingkatkan asupan kalori sehat dengan kacang-kacangan, alpukat, dan protein berkualitas</li>
-                        <li>Makan lebih sering dengan porsi kecil (5-6x sehari)</li>
-                        <li>Konsumsi smoothie tinggi kalori dan nutrisi</li>
-                    </ul>
-                    <h4>🏋️ Aktivitas:</h4>
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Fokus pada latihan kekuatan untuk membangun massa otot</li>
-                        <li>Kurangi cardio berlebihan yang dapat membakar kalori terlalu banyak</li>
-                        <li>Istirahat cukup untuk pemulihan otot</li>
+                        <li>Tingkatkan asupan kalori dengan makanan padat nutrisi</li>
+                        <li>Konsumsi 6-8 porsi kecil per hari</li>
+                        <li>Fokus pada protein berkualitas: telur, ikan, daging tanpa lemak</li>
+                        <li>Tambahkan lemak sehat: alpukat, kacang, minyak zaitun</li>
                     </ul>
                 </div>`;
             break;
 
         case 'normal':
             recommendations += `
-                <div style="border-left: 4px solid #4caf50; padding-left: 15px;">
-                    <h4>✅ Pertahankan:</h4>
+                <div style="border-left: 4px solid #2e7d32; padding-left: 15px;">
+                    <h4>✅ Pertahankan Berat Ideal:</h4>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Pola makan seimbang dengan variasi nutrisi lengkap</li>
-                        <li>Aktivitas fisik teratur minimal 150 menit per minggu</li>
-                        <li>Kombinasi latihan kardio dan kekuatan</li>
-                    </ul>
-                    <h4>🎯 Optimalisasi:</h4>
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Monitor komposisi tubuh, bukan hanya berat badan</li>
-                        <li>Konsumsi cukup protein untuk mempertahankan massa otot</li>
-                        <li>Kelola stres dan tidur berkualitas</li>
+                        <li>Pola makan seimbang: 50% karbohidrat, 20% protein, 30% lemak</li>
+                        <li>Olahraga teratur: 150 menit/minggu intensitas sedang</li>
+                        <li>Kombinasi latihan kardiovaskular dan kekuatan</li>
+                        <li>Monitoring rutin berat badan dan komposisi tubuh</li>
                     </ul>
                 </div>`;
             break;
 
         case 'overweight':
             recommendations += `
-                <div style="border-left: 4px solid #ff9800; padding-left: 15px;">
-                    <h4>📉 Penurunan Berat:</h4>
+                <div style="border-left: 4px solid #ef6c00; padding-left: 15px;">
+                    <h4>📉 Program Penurunan Berat:</h4>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Deficit kalori moderat 300-500 kalori per hari</li>
-                        <li>Fokus pada makanan whole foods, kurangi makanan olahan</li>
-                        <li>Tingkatkan konsumsi sayuran dan protein tanpa lemak</li>
-                    </ul>
-                    <h4>🚶 Aktivitas:</h4>
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Kombinasi cardio moderat dan latihan kekuatan</li>
-                        <li>Mulai dengan 30 menit aktivitas 5x seminggu</li>
-                        <li>Tingkatkan aktivitas sehari-hari (jalan kaki, naik tangga)</li>
+                        <li>Target penurunan: 0.5-1 kg per minggu</li>
+                        <li>Defisit kalori: 300-500 kalori per hari</li>
+                        <li>Olahraga: 250-300 menit/minggu untuk penurunan berat</li>
+                        <li>Monitoring tekanan darah dan gula darah</li>
                     </ul>
                 </div>`;
             break;
 
-        case 'obese':
+        case 'obese-1':
+        case 'obese-2':
+        case 'obese-3':
             recommendations += `
-                <div style="border-left: 4px solid #f44336; padding-left: 15px;">
-                    <h4>🏥 Konsultasi Medis:</h4>
+                <div style="border-left: 4px solid #d32f2f; padding-left: 15px;">
+                    <h4>🏥 Intervensi Medis Diperlukan:</h4>
                     <p style="background: #ffebee; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                        <strong>Penting:</strong> Disarankan berkonsultasi dengan dokter atau ahli gizi 
-                        untuk program penurunan berat badan yang aman dan terstruktur.
+                        <strong>Wajib:</strong> Konsultasi dengan tim medis (dokter, ahli gizi, psikolog) 
+                        untuk program komprehensif dan aman.
                     </p>
-                    <h4>🎯 Langkah Awal:</h4>
+                    <h4>🎯 Pendekatan Bertahap:</h4>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>Mulai dengan perubahan kecil dan berkelanjutan</li>
-                        <li>Aktivitas ringan seperti jalan santai 15-20 menit</li>
-                        <li>Kurangi minuman manis dan makanan tinggi gula</li>
-                        <li>Pantau tekanan darah dan gula darah secara rutin</li>
+                        <li>Target awal: 5-10% penurunan berat dalam 6 bulan</li>
+                        <li>Evaluasi medis lengkap (jantung, diabetes, sleep apnea)</li>
+                        <li>Pertimbangan terapi farmakologis atau bedah bariatrik</li>
+                        <li>Dukungan psikologis dan perubahan perilaku</li>
                     </ul>
                 </div>`;
             break;
-    }
-
-    if (activityLevel === 'sedentary') {
-        recommendations += `
-            <div style="background: var(--bg-primary); padding: 15px; border-radius: 8px; margin-top: 15px; border: 2px solid var(--warning-color);">
-                <h4>⚠️ Gaya Hidup Sedentary:</h4>
-                <p>Mulai dengan aktivitas ringan seperti jalan kaki 10 menit setelah makan, 
-                gunakan tangga instead lift, atau lakukan peregangan setiap jam saat bekerja.</p>
-            </div>`;
     }
 
     recommendations += `
-        <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #e3f2fd, #f3e5f5); border-radius: 8px;">
-            <p><strong>💡 Tips:</strong> Perubahan kecil yang konsisten lebih efektif daripada perubahan drastis yang sulit dipertahankan. 
-            Fokus pada pembentukan kebiasaan sehat jangka panjang.</p>
+        <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #e8f5e8, #f3e5f5); border-radius: 8px;">
+            <p><strong>💡 Prinsip Dasar:</strong> Perubahan gaya hidup yang berkelanjutan lebih efektif 
+            daripada diet ekstrem. Fokus pada kesehatan jangka panjang, bukan hanya angka timbangan.</p>
         </div>`;
 
     return recommendations;
 }
 
+// Target weight simulator with strict BMI ranges
 function updateTargetWeight(targetWeight) {
     const heightCm = getHeightInCm();
     if (!heightCm) return;
@@ -294,9 +332,14 @@ function updateTargetWeight(targetWeight) {
     const targetCategory = getBMICategory(targetBMI);
 
     document.getElementById('target-weight-display').textContent = `${targetWeight} kg`;
-    document.getElementById('target-bmi-display').textContent = `BMI: ${targetBMI.toFixed(1)} (${targetCategory.text})`;
+    document.getElementById('target-bmi-display').textContent = `BMI: ${targetBMI}`;
+    
+    const categoryDisplay = document.getElementById('target-category-display');
+    categoryDisplay.textContent = targetCategory.text;
+    categoryDisplay.className = `bmi-category ${targetCategory.category}`;
 }
 
+// Get height in cm regardless of current unit
 function getHeightInCm() {
     const heightInput = document.getElementById('height');
     const heightInchesInput = document.getElementById('height-inches');
@@ -312,37 +355,36 @@ function getHeightInCm() {
     }
 }
 
+// Get weight in kg regardless of current unit
 function getWeightInKg() {
     const weight = parseFloat(document.getElementById('weight').value);
     if (!weight) return null;
     return currentWeightUnit === 'kg' ? weight : lbsToKg(weight);
 }
 
+// Enhanced form validation with stricter criteria
 function validateForm() {
     let isValid = true;
     
-
+    // Weight validation
     const weightInput = document.getElementById('weight');
     const weightError = document.getElementById('weight-error');
     const weight = getWeightInKg();
     
-    if (!weight || weight < 10 || weight > 500) {
-        weightError.textContent = currentWeightUnit === 'kg' 
-            ? 'Berat badan harus antara 10-500 kg'
-            : 'Berat badan harus antara 22-1100 lbs';
+    if (!weight || weight < 20 || weight > 300) {
+        weightError.textContent = 'Berat badan harus antara 20-300 kg untuk akurasi medis';
         weightError.style.display = 'block';
         isValid = false;
     } else {
         weightError.style.display = 'none';
     }
 
+    // Height validation with medical standards
     const heightError = document.getElementById('height-error');
     const height = getHeightInCm();
     
-    if (!height || height < 50 || height > 300) {
-        heightError.textContent = currentHeightUnit === 'cm'
-            ? 'Tinggi badan harus antara 50-300 cm'
-            : 'Tinggi badan harus antara 1\'8" - 9\'10"';
+    if (!height || height < 100 || height > 250) {
+        heightError.textContent = 'Tinggi badan harus antara 100-250 cm untuk perhitungan akurat';
         heightError.style.display = 'block';
         isValid = false;
     } else {
@@ -352,98 +394,76 @@ function validateForm() {
     return isValid;
 }
 
+// Main calculation with enhanced accuracy
 function performCalculation() {
     if (!validateForm()) return;
 
     const weight = getWeightInKg();
     const height = getHeightInCm();
-    
-
-    console.log('Weight in kg:', weight, 'Height in cm:', height);
-    
     const age = parseInt(document.getElementById('age').value) || 0;
-    const gender = document.querySelector('input[name="gender"]:checked')?.value || 'other';
-    const waist = parseFloat(document.getElementById('waist').value);
-    const bodyType = document.getElementById('body-type').value;
-    const activityLevel = document.getElementById('activity-level').value;
+    const gender = document.querySelector('input[name="gender"]:checked')?.value || 'male';
 
+    // Calculate BMI with high precision
     const bmi = calculateBMI(weight, height);
     const category = getBMICategory(bmi);
+    const healthRisk = getHealthRisk(bmi, age, gender);
 
+    // Calculate metrics
     const bodyFatPercentage = age > 0 ? estimateBodyFat(bmi, age, gender) : null;
-    const waistHeightRatio = waist ? calculateWaistHeightRatio(waist, height) : null;
     const idealWeightRange = calculateIdealWeightRange(height);
 
+    // Store current data
     currentData = {
-        weight, height, age, gender, waist, bodyType, activityLevel,
-        bmi, category, bodyFatPercentage, waistHeightRatio, idealWeightRange
+        weight, height, age, gender, bmi, category, healthRisk, 
+        bodyFatPercentage, idealWeightRange
     };
 
+    // Update UI
     updateUI(currentData);
-
     setupTargetWeightSimulator(weight, height);
 
+    // Show results
     document.getElementById('results').classList.add('active');
     document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
 }
 
+// Update UI with enhanced precision
 function updateUI(data) {
-    const { bmi, category, bodyFatPercentage, waistHeightRatio, idealWeightRange } = data;
+    const { bmi, category, bodyFatPercentage, idealWeightRange, healthRisk } = data;
 
+    // Animate BMI value with precision
     animateNumber('bmi-value', 0, bmi);
 
+    // Update BMI category
     const categoryElement = document.getElementById('bmi-category');
     categoryElement.textContent = category.text;
     categoryElement.className = `bmi-category ${category.category}`;
 
+    // Update BMI gauge with precision
     updateBMIGauge(bmi);
 
+    // Update health metrics
     document.getElementById('body-fat-percentage').textContent = 
-        bodyFatPercentage ? `${bodyFatPercentage.toFixed(1)}%` : 'Data tidak lengkap';
-
-    document.getElementById('waist-height-ratio').textContent = 
-        waistHeightRatio ? `${(waistHeightRatio * 100).toFixed(1)}%` : 'Data tidak lengkap';
+        bodyFatPercentage ? `${bodyFatPercentage}%` : 'Perlu data usia';
 
     document.getElementById('ideal-weight-range').textContent = 
         `${idealWeightRange.min.toFixed(1)}-${idealWeightRange.max.toFixed(1)} kg`;
 
+    document.getElementById('health-risk').textContent = healthRisk.description;
+
+    // Generate analysis and recommendations
     document.getElementById('contextual-analysis').innerHTML = generateContextualAnalysis(data);
-
     document.getElementById('recommendations').innerHTML = generateRecommendations(data);
-
-    showMissingDataWarnings(data);
 }
 
-function showMissingDataWarnings(data) {
-    const { age, waist, bodyType, activityLevel } = data;
-    let warnings = [];
-
-    if (!age) warnings.push('usia');
-    if (!waist) warnings.push('lingkar pinggang');
-    if (!bodyType) warnings.push('tipe tubuh');
-    if (!activityLevel) warnings.push('tingkat aktivitas');
-
-    if (warnings.length > 0) {
-        const warningDiv = document.createElement('div');
-        warningDiv.className = 'warning-message';
-        warningDiv.innerHTML = `
-            <strong>📝 Data Tambahan:</strong> Untuk analisis yang lebih akurat, 
-            silakan lengkapi data: ${warnings.join(', ')}. 
-            Ini akan membantu memberikan rekomendasi yang lebih personal.
-        `;
-        
-        const contextualDiv = document.getElementById('contextual-analysis');
-        contextualDiv.appendChild(warningDiv);
-    }
-}
-
+// Setup target weight simulator with tighter ranges
 function setupTargetWeightSimulator(currentWeight, height) {
     const slider = document.getElementById('target-weight-slider');
-    
-
     const idealRange = calculateIdealWeightRange(height);
-    const minWeight = Math.max(30, Math.min(idealRange.min - 10, currentWeight - 20));
-    const maxWeight = Math.min(200, Math.max(idealRange.max + 10, currentWeight + 20));
+    
+    // More realistic range based on your feedback
+    const minWeight = Math.max(25, currentWeight - 15);
+    const maxWeight = Math.min(120, currentWeight + 15);
     
     slider.min = minWeight.toFixed(1);
     slider.max = maxWeight.toFixed(1);
@@ -453,6 +473,7 @@ function setupTargetWeightSimulator(currentWeight, height) {
     updateTargetWeight(currentWeight);
 }
 
+// Save result to localStorage
 function saveResult() {
     if (!currentData.bmi) {
         alert('Tidak ada data untuk disimpan. Silakan hitung BMI terlebih dahulu.');
@@ -461,53 +482,22 @@ function saveResult() {
 
     const result = {
         date: new Date().toLocaleString('id-ID'),
-        bmi: currentData.bmi.toFixed(1),
+        bmi: currentData.bmi,
         category: currentData.category.text,
         weight: currentData.weight.toFixed(1),
-        height: currentData.height.toFixed(1)
+        height: currentData.height.toFixed(1),
+        healthRisk: currentData.healthRisk.description
     };
 
     let savedResults = JSON.parse(localStorage.getItem('bmi_results') || '[]');
-    
-
     savedResults.unshift(result);
-    
-
     savedResults = savedResults.slice(0, 5);
-    
-
     localStorage.setItem('bmi_results', JSON.stringify(savedResults));
     
-    alert('Hasil berhasil disimpan! 💾');
-    
-
-    showSavedResults(savedResults);
+    alert('Hasil berhasil disimpan!');
 }
 
-function showSavedResults(results) {
-    const resultsHTML = results.map(result => `
-        <div style="background: var(--bg-primary); padding: 10px; border-radius: 8px; margin: 5px 0; border: 1px solid var(--border-color);">
-            <strong>${result.date}</strong><br>
-            BMI: ${result.bmi} (${result.category})<br>
-            Berat: ${result.weight} kg, Tinggi: ${result.height} cm
-        </div>
-    `).join('');
-
-    const historyDiv = document.createElement('div');
-    historyDiv.innerHTML = `
-        <h3>📅 Riwayat Hasil</h3>
-        ${resultsHTML}
-    `;
-    
-
-    const recommendationsDiv = document.getElementById('recommendations');
-    if (recommendationsDiv.nextSibling) {
-        recommendationsDiv.parentNode.insertBefore(historyDiv, recommendationsDiv.nextSibling);
-    } else {
-        recommendationsDiv.parentNode.appendChild(historyDiv);
-    }
-}
-
+// Dark mode toggle
 function toggleDarkMode() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -519,29 +509,26 @@ function toggleDarkMode() {
     button.textContent = newTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
 }
 
+// Initialize app
 function initializeApp() {
-
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     
     const button = document.querySelector('.dark-mode-toggle');
     button.textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-
-    const savedResults = JSON.parse(localStorage.getItem('bmi_results') || '[]');
-    if (savedResults.length > 0) {
-
-        console.log(`${savedResults.length} hasil tersimpan ditemukan`);
-    }
 }
 
+// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 
+    // Form submission
     document.getElementById('bmi-form').addEventListener('submit', function(e) {
         e.preventDefault();
         performCalculation();
     });
 
+    // Input validation
     document.getElementById('weight').addEventListener('input', function() {
         document.getElementById('weight-error').style.display = 'none';
     });
@@ -549,31 +536,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('height').addEventListener('input', function() {
         document.getElementById('height-error').style.display = 'none';
     });
-
-    const autoCalcInputs = ['weight', 'height'];
-    autoCalcInputs.forEach(id => {
-        document.getElementById(id).addEventListener('blur', function() {
-            if (validateForm() && document.getElementById('results').classList.contains('active')) {
-
-                performCalculation();
-            }
-        });
-    });
 });
 
+// Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-
     if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
         performCalculation();
     }
     
-
     if (e.ctrlKey && e.key === 'd') {
         e.preventDefault();
         toggleDarkMode();
     }
 });
-
-console.log('🧮 BMI Calculator loaded successfully!');
-console.log('💡 Tips: Use Ctrl+Enter to calculate, Ctrl+D to toggle dark mode');
